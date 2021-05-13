@@ -1,12 +1,11 @@
 import numpy as np
 from os import walk, remove
-import h5py
 import requests
 from tqdm import tqdm
 
 
 def download_data(categories):
-    for i in trange(len(categories)):
+    for i in tqdm(range(len(categories))):
         cat = categories[i]
         cat_name = cat.replace(" ", "%20")
         url = "https://storage.googleapis.com/quickdraw_dataset/full/numpy_bitmap/{}.npy".format(cat_name)
@@ -28,7 +27,6 @@ def combine_data(dataset_size):
     for filename in filename_list:
         path = mypath + filename
         x = np.load(path)
-        x = x.astype('float32') / 255.0
         y = [i] * len(x)
 
         np.random.shuffle(x)
@@ -44,6 +42,5 @@ def combine_data(dataset_size):
         i += 1
         remove(path)
     
-    with h5py.File('data/data.h5', 'w') as hf:
-        hf.create_dataset("X",  data=X)
-        hf.create_dataset("y",  data=Y)
+    np.save('data/X.npy', X)
+    np.save('data/y.npy', Y)

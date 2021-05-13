@@ -1,25 +1,26 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
-import h5py 
+from PIL import Image
 import numpy as np
 
-class HDF5Dataset(Dataset):
+class QuickdrawDataset(Dataset):
 
 
-    def __init__(self, h5_file, transform=None):
-        super(HDF5Dataset, self).__init__()
-        self.data_full = h5py.File(h5_file, 'r') 
-        self.data = torch.from_numpy(np.array(self.data.get('X'))).float()
-        self.target = torch.from_numpy(np.array(self.data.get('y'))).long()
+    def __init__(self, datapath, targetpath, transform=None):
+        super(QuickdrawDataset, self).__init__()
+        self.data = np.load(datapath)
+        self.data = np.expand_dims(self.data, axis=1)
+        self.target = torch.LongTensor(np.load(targetpath))
         self.transform = transform
 
     def __getitem__(self, index):
         x = self.data[index]
         y = self.target[index]
-        
+
         if self.transform:
-            x = self.transform(x)
+            img = Image.fromarray(x.reshape(28,28).astype(np.uint8), 'L')
+            x = self.transform(img)
         
         return x, y
     
