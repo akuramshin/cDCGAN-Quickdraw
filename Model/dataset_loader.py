@@ -37,10 +37,9 @@ def combine_data():
         i += 1
         remove(path)
     
-    with h5py.File('data/X_full.h5', 'w') as hf:
-        hf.create_dataset("name-of-dataset",  data=X)
-    with h5py.File('data/Y_full.h5', 'w') as hf:
-        hf.create_dataset("name-of-dataset",  data=Y)
+    with h5py.File('data/data.h5', 'w') as hf:
+        hf.create_dataset("X",  data=X)
+        hf.create_dataset("y",  data=Y)
 
 
 download_data(["onion", "octopus", "nose"])
