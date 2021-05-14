@@ -68,17 +68,23 @@ ncat = 10
 # Create the dataset
 dataset = HDF5Dataset(datapath=datapath,
                            transform=transforms.Compose([
-                               transforms.Resize(image_size),
-                               transforms.CenterCrop(image_size),
+                               transforms.Resize((image_size, image_size)),
                                transforms.ToTensor(),
-                               transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                               transforms.Normalize((0.15,), (0.3038,)), # Mean and standard deviation of dataset
                            ]))
 
 # Create the dataloader
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 device = torch.device("cuda:0" if (torch.cuda.cudnn.is_available() and ngpu > 0) else "cpu")
 
-
+# Values come from paper
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
 
 
 
@@ -91,7 +97,6 @@ class Generator(torch.nn.Module):
 
     def __init__(self):
         super(Generator, self).__init__()
-
 
         self.main = torch.nn.Sequential(
             nn.ConvTranspose2d(110, ngf*4, 4, 1, 0, bias=False),
@@ -113,3 +118,49 @@ class Generator(torch.nn.Module):
         outp = self.main(inp)
 
         return outp
+
+
+class Discriminator(nn.Module):
+    """
+    This is our discriminator model ("the detective") that learns to
+    differentiate between real and fake images.
+    """
+
+    def __init__(self):
+        super(Discriminator, self).__init__()
+
+        self.ylabel = nn.Sequential(
+            nn.Linear(10, 28*28*1),
+            nn.Relu(True)
+        )
+
+        self.main = nn.Sequential(
+            nn.Conv2d(nc+1, ndf, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf*2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(ndf*2, ndf*4, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(ndf*4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x, y):
+        y = self.ylabel(y)
+        y = y.view(-1, 1, 28, 28)
+        inp = torch.cat([x,y], 1)
+        outp = self.main(inp)
+
+        return outp.view(-1, 1).squeeze(1)
+
+netG = Generator().to(device)
+netG.apply(weights_init)
+
+netD = Discriminator().to(device)
+netD.apply(weights_init)
+
+criterion = nn.BCELoss()
+
+fixed_noise = torch.randn()
