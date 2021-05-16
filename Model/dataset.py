@@ -11,7 +11,7 @@ class QuickdrawDataset(Dataset):
         super(QuickdrawDataset, self).__init__()
         self.data = np.load(datapath)
         self.data = np.expand_dims(self.data, axis=1)
-        self.target = torch.LongTensor(np.load(targetpath))
+        self.target = torch.tensor(np.load(targetpath)).long()
         self.transform = transform
 
     def __getitem__(self, index):
