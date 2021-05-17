@@ -78,6 +78,7 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 #device = torch.device("cuda:0" if (torch.cuda.cudnn.is_available() and ngpu > 0) else "cpu")
 device = "cpu"
+torch.autograd.set_detect_anomaly(True)
 
 # Values come from paper
 def weights_init(m):
@@ -100,24 +101,33 @@ class Generator(torch.nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
 
-        self.main = torch.nn.Sequential(
-            nn.ConvTranspose2d(110, ngf*4, 4, 1, 0, bias=False),
+        self.y_deconv = nn.Sequential(
+            nn.ConvTranspose2d(10, ngf*4, 4, 1, 0, bias=False),
             nn.BatchNorm2d(ngf*4),
             nn.ReLU(True),
-            nn.ConvTranspose2d(ngf*4, ngf*2, 4, 1, 0, bias=False),
+        )
+
+        self.z_deconv = nn.Sequential(
+            nn.ConvTranspose2d(100, ngf*4, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(ngf*4),
+            nn.ReLU(True),
+        )
+
+        self.main = torch.nn.Sequential(
+            nn.ConvTranspose2d(ngf*8, ngf*4, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(ngf*4),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(ngf*4, ngf*2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf*2),
             nn.ReLU(True),
-            nn.ConvTranspose2d(ngf*2, ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf*2, nc, 4, 2, 1, bias=False),
             nn.Tanh()
         )
     
     def forward(self, z, y):
-        y = y.view(-1, 10, 1, 1)
+        y = self.y_deconv(y.float())
+        z = self.z_deconv(z)
         inp = torch.cat([z, y], 1)
-        inp = inp.view(-1, 110, 1, 1)
         outp = self.main(inp)
 
         return outp
@@ -132,27 +142,30 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
-        self.ylabel = nn.Sequential(
-            nn.Linear(10, 28*28*1),
-            nn.ReLU(True)
+        self.y_conv = nn.Sequential(
+            nn.Conv2d(10, ndf, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        self.x_conv = nn.Sequential(
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.main = nn.Sequential(
-            nn.Conv2d(nc+1, ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf, ndf*2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf*2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf*2, ndf*4, 4, 1, 0, bias=False),
+            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf*4),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),
+            nn.Conv2d(ndf*4, ndf*8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(ndf*8),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(ndf*8, 1, 4, 1, 0, bias=False),
             nn.Sigmoid()
         )
 
     def forward(self, x, y):
-        y = self.ylabel(y.float())
-        y = y.view(-1, 1, 28, 28)
+        y = self.y_conv(y)
+        x = self.x_conv(x)
         inp = torch.cat([x,y], 1)
         outp = self.main(inp)
 
@@ -167,7 +180,7 @@ netD.apply(weights_init)
 criterion = nn.BCELoss()
 
 fixed_noise = torch.randn(64, nz, 1, 1, device=device)
-fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10) 
+fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10).view(64,10,1,1)
 real_label = 1.
 fake_label = 0.
 
@@ -180,6 +193,12 @@ G_losses = []
 D_losses = []
 iters = 0
 
+onehot = torch.zeros(10, 10)
+onehot = onehot.scatter_(1, torch.LongTensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).view(10,1), 1).view(10, 10, 1, 1)
+fill = torch.zeros([10, 10, image_size, image_size])
+for i in range(10):
+    fill[i, i, :, :] = 1
+
 print("Starting training loop...")
 for epoch in range(num_epochs):
     for i, data in enumerate(dataloader, 0):
@@ -187,33 +206,46 @@ for epoch in range(num_epochs):
         # 1.) Train with real images
         netD.zero_grad()
         real_cpu = data[0].to(device)
-        cat = data[1].to(device)
+        y_fill = fill[torch.argmax(data[1], dim=1)].to(device)
         b_size = real_cpu.size(0)
         label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
 
-        output = netD(real_cpu, cat).view(-1)
+        output = netD(real_cpu, y_fill).view(-1)
         errD_real = criterion(output, label)
         errD_real.backward()
         D_x = output.mean().item()
 
         # 2.) Train with fake
-        noise = torch.randn(b_size, nz, 1, 1, device=device)
-        fake = netG(noise, cat)
-        label.fill_(fake_label)
+        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
+        y_label = onehot[y_noise].to(device)
+        y_fill = fill[y_noise].to(device)
+        fake = netG(z_noise, y_label)
 
-        output = netD(fake.detach(), cat).view(-1)
+        label.fill_(fake_label)
+        output = netD(fake.detach(), y_fill).view(-1)
+
         errD_fake = criterion(output, label)
         errD_fake.backward()
         D_G_z1 = output.mean().item()
         errD = errD_real + errD_fake
+
         # Update D
+        #errD.backward()
         optimizerD.step()
 
         # Update G network: maximize log(D(G(z)))
         netG.zero_grad()
-        label.fill_(real_label)
 
-        output = netD(fake, cat).view(-1)
+        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
+        y_label = onehot[y_noise].to(device)
+        y_fill = fill[y_noise].to(device)
+        fake = netG(z_noise, y_label)
+
+        label.fill_(real_label)
+        output = netD(fake, y_fill).view(-1)
+
         errG = criterion(output, label)
         errG.backward()
         D_G_z2 = output.mean().item()
