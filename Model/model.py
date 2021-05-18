@@ -50,7 +50,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 5
+num_epochs = 1
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -295,12 +295,12 @@ plt.subplot(1,2,1)
 plt.axis("off")
 plt.title("Real Images")
 #plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
-plt.imsave('real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)), cmap="gray")
+plt.imsave('real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)).numpy(), cmap="gray")
 
 # Plot the fake images from the last epoch
 plt.subplot(1,2,2)
 plt.axis("off")
 plt.title("Fake Images")
 plt.imshow(np.transpose(img_list[-1],(1,2,0)))
-plt.imsave('fake.png', np.transpose(img_list[-1],(1,2,0)), cmap="gray")
+plt.imsave('fake.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
 plt.show()
