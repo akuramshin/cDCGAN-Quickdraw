@@ -6,7 +6,7 @@ import random
 import torch
 import torch.nn as nn
 import torch.nn.parallel
-#import torch.backends.cudnn as cudnn
+import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
 from dataset import QuickdrawDataset
@@ -76,8 +76,8 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
 
 # Create the dataloader
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
-#device = torch.device("cuda:0" if (torch.cuda.cudnn.is_available() and ngpu > 0) else "cpu")
-device = "cpu"
+device = torch.device("cuda:0" if (cudnn.is_available() and ngpu > 0) else "cpu")
+#device = "cpu"
 torch.autograd.set_detect_anomaly(True)
 
 # Values come from paper
@@ -180,7 +180,7 @@ netD.apply(weights_init)
 criterion = nn.BCELoss()
 
 fixed_noise = torch.randn(64, nz, 1, 1, device=device)
-fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10).view(64,10,1,1)
+fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10).view(64,10,1,1).to(device)
 real_label = 1.
 fake_label = 0.
 
@@ -276,7 +276,8 @@ plt.plot(D_losses,label="D")
 plt.xlabel("iterations")
 plt.ylabel("Loss")
 plt.legend()
-plt.show()
+plt.savefig('plot.png')
+#plt.show()
 
 fig = plt.figure(figsize=(8,8))
 plt.axis("off")
@@ -293,11 +294,13 @@ plt.figure(figsize=(15,15))
 plt.subplot(1,2,1)
 plt.axis("off")
 plt.title("Real Images")
-plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
+#plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
+plt.imsave('real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)), cmap="gray")
 
 # Plot the fake images from the last epoch
 plt.subplot(1,2,2)
 plt.axis("off")
 plt.title("Fake Images")
 plt.imshow(np.transpose(img_list[-1],(1,2,0)))
+plt.imsave('fake.png', np.transpose(img_list[-1],(1,2,0)), cmap="gray")
 plt.show()
