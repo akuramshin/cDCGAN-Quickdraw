@@ -74,7 +74,6 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
                                transforms.Resize((28,28)),
                                transforms.ToTensor(),
                                transforms.Normalize((0.15,), (0.3038,)), # Mean and std of the dataset
-			       AddGaussianNoise(0., 1.)
                            ]))
 
 # Create the dataloader
@@ -202,6 +201,7 @@ fill = torch.zeros([10, 10, image_size, image_size])
 for i in range(10):
     fill[i, i, :, :] = 1
 
+std = 0.1
 print("Starting training loop...")
 for epoch in range(num_epochs):
     for i, data in enumerate(dataloader, 0):
@@ -210,6 +210,7 @@ for epoch in range(num_epochs):
         netD.zero_grad()
 
         real_cpu = data[0]
+        real_cpu += (torch.randn(128, 1, 28, 28) * std)
         b_size = real_cpu.size(0)
         y_fill = fill[torch.argmax(data[1], dim=1)]
         real_cpu, y_fill = Variable(real_cpu.cuda()), Variable(y_fill.cuda())
@@ -231,7 +232,7 @@ for epoch in range(num_epochs):
         z_noise, y_label, y_fill = Variable(z_noise.cuda()), Variable(y_label.cuda()), Variable(y_fill.cuda())
 
         fake = netG(z_noise, y_label)
-        output = netD(fake.detach(), y_fill).view(-1)
+        output = netD(fake.detach() + (torch.randn(128, 1, 28, 28) * std), y_fill).view(-1)
 
         errD_fake = criterion(output, label_fake)
         #errD_fake.backward()
