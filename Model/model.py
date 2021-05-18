@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
 from dataset import QuickdrawDataset
+from noise_transform import AddGaussianNoise
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.autograd import Variable
@@ -72,7 +73,8 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
                            transform=transforms.Compose([
                                transforms.Resize((28,28)),
                                transforms.ToTensor(),
-                               transforms.Normalize((0.15,), (0.3038,)) # Mean and std of the dataset
+                               transforms.Normalize((0.15,), (0.3038,)), # Mean and std of the dataset
+			       AddGaussianNoise(0., 1.)
                            ]))
 
 # Create the dataloader
@@ -283,7 +285,7 @@ plt.plot(D_losses,label="D")
 plt.xlabel("iterations")
 plt.ylabel("Loss")
 plt.legend()
-plt.savefig('plot.png')
+plt.savefig('plot2.png')
 #plt.show()
 
 fig = plt.figure(figsize=(8,8))
@@ -309,5 +311,5 @@ plt.subplot(1,2,2)
 plt.axis("off")
 plt.title("Fake Images")
 plt.imshow(np.transpose(img_list[-1],(1,2,0)))
-plt.imsave('fake.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
+plt.imsave('fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
 plt.show()
