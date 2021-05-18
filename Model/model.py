@@ -13,7 +13,6 @@ from dataset import QuickdrawDataset
 from noise_transform import AddGaussianNoise
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
-from torch.autograd import Variable
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -209,49 +208,44 @@ for epoch in range(num_epochs):
         # 1.) Train with real images
         netD.zero_grad()
 
-        real_cpu = data[0]
-        real_cpu += (torch.randn(128, 1, 28, 28) * std)
+        real_cpu = (data[0] + (torch.randn(128, 1, 28, 28) * std)).to(device)
         b_size = real_cpu.size(0)
-        y_fill = fill[torch.argmax(data[1], dim=1)]
-        real_cpu, y_fill = Variable(real_cpu.cuda()), Variable(y_fill.cuda())
+        y_fill = fill[torch.argmax(data[1], dim=1)].to(device)
 
-        label_real = torch.full((b_size,), real_label, dtype=torch.float)
-        label_fake = torch.full((b_size,), fake_label, dtype=torch.float)
-        label_real, label_fake = Variable(label_real.cuda()), Variable(label_fake.cuda())
+        label_real = torch.full((b_size,), real_label, dtype=torch.float, device=device)
+        label_fake = torch.full((b_size,), fake_label, dtype=torch.float, device=device)
 
         output = netD(real_cpu, y_fill).view(-1)
         errD_real = criterion(output, label_real)
-        #errD_real.backward()
+        errD_real.backward()
         D_x = output.mean().item()
 
         # 2.) Train with fake
-        z_noise = torch.randn(b_size, nz, 1, 1)
+        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y_label = onehot[y_noise]
-        y_fill = fill[y_noise]
-        z_noise, y_label, y_fill = Variable(z_noise.cuda()), Variable(y_label.cuda()), Variable(y_fill.cuda())
+        y_label = onehot[y_noise].to(device)
+        y_fill = fill[y_noise].to(device)
 
         fake = netG(z_noise, y_label)
-        output = netD(fake.detach() + (torch.randn(128, 1, 28, 28) * std), y_fill).view(-1)
+        instance_noise = (torch.randn(128, 1, 28, 28) * std).to(device)
+        output = netD(fake.detach() + instance_noise, y_fill).view(-1)
 
         errD_fake = criterion(output, label_fake)
-        #errD_fake.backward()
+        errD_fake.backward()
         D_G_z1 = output.mean().item()
         errD = errD_real + errD_fake
 
         # Update D
-        errD.backward()
+        #errD.backward()
         optimizerD.step()
 
         # Update G network: maximize log(D(G(z)))
         netG.zero_grad()
 
-        z_noise = torch.randn(b_size, nz, 1, 1)
+        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y_label = onehot[y_noise]
-        y_fill = fill[y_noise]
-        z_noise, y_label, y_fill = Variable(z_noise.cuda()), Variable(y_label.cuda()), Variable(y_fill.cuda())
-
+        y_label = onehot[y_noise].to(device)
+        y_fill = fill[y_noise].to(device)
 
         fake = netG(z_noise, y_label)
         output = netD(fake, y_fill).view(-1)
