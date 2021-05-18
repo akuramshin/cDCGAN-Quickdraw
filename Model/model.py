@@ -12,6 +12,7 @@ import torch.utils.data
 from dataset import QuickdrawDataset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
+from torch.autograd import Variable
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ torch.manual_seed(manualSeed)
 datapath = "data/data.h5"
 
 # Number of workers for dataloader
-workers = 0
+workers = 2
 
 # Batch size during training
 batch_size = 128
@@ -59,7 +60,7 @@ lr = 0.0002
 beta1 = 0.5
 
 # Number of GPUs available. Use 0 for CPU mode.
-ngpu = 0
+ngpu = 1
 
 # Number of categories (labels)
 ncat = 10
@@ -78,7 +79,7 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 device = torch.device("cuda:0" if (cudnn.is_available() and ngpu > 0) else "cpu")
 #device = "cpu"
-torch.autograd.set_detect_anomaly(True)
+print(device)
 
 # Values come from paper
 def weights_init(m):
@@ -205,48 +206,54 @@ for epoch in range(num_epochs):
         # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         # 1.) Train with real images
         netD.zero_grad()
-        real_cpu = data[0].to(device)
-        y_fill = fill[torch.argmax(data[1], dim=1)].to(device)
+
+        real_cpu = data[0]
         b_size = real_cpu.size(0)
-        label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
+        y_fill = fill[torch.argmax(data[1], dim=1)]
+        real_cpu, y_fill = Variable(real_cpu.cuda()), Variable(y_fill.cuda())
+
+        label_real = torch.full((b_size,), real_label, dtype=torch.float)
+        label_fake = torch.full((b_size,), fake_label, dtype=torch.float)
+        label_real, label_fake = Variable(label_real.cuda()), Variable(label_fake.cuda())
 
         output = netD(real_cpu, y_fill).view(-1)
-        errD_real = criterion(output, label)
-        errD_real.backward()
+        errD_real = criterion(output, label_real)
+        #errD_real.backward()
         D_x = output.mean().item()
 
         # 2.) Train with fake
-        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        z_noise = torch.randn(b_size, nz, 1, 1)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y_label = onehot[y_noise].to(device)
-        y_fill = fill[y_noise].to(device)
-        fake = netG(z_noise, y_label)
+        y_label = onehot[y_noise]
+        y_fill = fill[y_noise]
+        z_noise, y_label, y_fill = Variable(z_noise.cuda()), Variable(y_label.cuda()), Variable(y_fill.cuda())
 
-        label.fill_(fake_label)
+        fake = netG(z_noise, y_label)
         output = netD(fake.detach(), y_fill).view(-1)
 
-        errD_fake = criterion(output, label)
-        errD_fake.backward()
+        errD_fake = criterion(output, label_fake)
+        #errD_fake.backward()
         D_G_z1 = output.mean().item()
         errD = errD_real + errD_fake
 
         # Update D
-        #errD.backward()
+        errD.backward()
         optimizerD.step()
 
         # Update G network: maximize log(D(G(z)))
         netG.zero_grad()
 
-        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        z_noise = torch.randn(b_size, nz, 1, 1)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y_label = onehot[y_noise].to(device)
-        y_fill = fill[y_noise].to(device)
-        fake = netG(z_noise, y_label)
+        y_label = onehot[y_noise]
+        y_fill = fill[y_noise]
+        z_noise, y_label, y_fill = Variable(z_noise.cuda()), Variable(y_label.cuda()), Variable(y_fill.cuda())
 
-        label.fill_(real_label)
+
+        fake = netG(z_noise, y_label)
         output = netD(fake, y_fill).view(-1)
 
-        errG = criterion(output, label)
+        errG = criterion(output, label_real)
         errG.backward()
         D_G_z2 = output.mean().item()
         optimizerG.step()
