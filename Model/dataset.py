@@ -17,7 +17,6 @@ class QuickdrawDataset(Dataset):
     def __getitem__(self, index):
         x = self.data[index]
         y = self.target[index]
-        y = torch.nn.functional.one_hot(y, 10) 
 
         if self.transform:
             img = Image.fromarray(x.reshape(28,28).astype(np.uint8), 'L')
