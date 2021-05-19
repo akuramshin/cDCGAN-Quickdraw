@@ -13,7 +13,7 @@ from dataset import QuickdrawDataset
 from noise_transform import AddGaussianNoise
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
-
+from architecture import Generator, Discriminator
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -25,9 +25,6 @@ manualSeed = 999
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-# Root directory for dataset
-datapath = "data/data.h5"
-
 # Number of workers for dataloader
 workers = 2
 
@@ -38,17 +35,8 @@ batch_size = 128
 #   size using a transformer.
 image_size = 28
 
-# Number of channels in the training images. For color images this is 3
-nc = 1
-
 # Size of z latent vector (i.e. size of generator input)
 nz = 100
-
-# Size of feature maps in generator
-ngf = 64
-
-# Size of feature maps in discriminator
-ndf = 64
 
 # Number of training epochs
 num_epochs = 1
@@ -62,8 +50,6 @@ beta1 = 0.5
 # Number of GPUs available. Use 0 for CPU mode.
 ngpu = 1
 
-# Number of categories (labels)
-ncat = 10
 
 # We can use an image folder dataset the way we have it setup.
 # Create the dataset
@@ -78,7 +64,6 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
 # Create the dataloader
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 device = torch.device("cuda:0" if (cudnn.is_available() and ngpu > 0) else "cpu")
-#device = "cpu"
 print(device)
 
 # Values come from paper
@@ -91,86 +76,6 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-
-
-class Generator(torch.nn.Module):
-    """
-    This is our generator model ("the artist") that learns to
-    create images that look real.
-    """
-
-    def __init__(self):
-        super(Generator, self).__init__()
-
-        self.y_deconv = nn.Sequential(
-            nn.ConvTranspose2d(10, ngf*4, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf*4),
-            nn.ReLU(True),
-        )
-
-        self.z_deconv = nn.Sequential(
-            nn.ConvTranspose2d(100, ngf*4, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf*4),
-            nn.ReLU(True),
-        )
-
-        self.main = torch.nn.Sequential(
-            nn.ConvTranspose2d(ngf*8, ngf*4, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf*4),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(ngf*4, ngf*2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf*2),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(ngf*2, nc, 4, 2, 1, bias=False),
-            nn.Tanh()
-        )
-    
-    def forward(self, z, y):
-        y = self.y_deconv(y.float())
-        z = self.z_deconv(z)
-        inp = torch.cat([z, y], 1)
-        outp = self.main(inp)
-
-        return outp
-
-
-class Discriminator(nn.Module):
-    """
-    This is our discriminator model ("the detective") that learns to
-    differentiate between real and fake images.
-    """
-
-    def __init__(self):
-        super(Discriminator, self).__init__()
-
-        self.y_conv = nn.Sequential(
-            nn.Conv2d(10, ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        self.x_conv = nn.Sequential(
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        self.main = nn.Sequential(
-            nn.Conv2d(ndf*2, ndf*4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf*4),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf*4, ndf*8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ndf*8),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf*8, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x, y):
-        y = self.y_conv(y)
-        x = self.x_conv(x)
-        inp = torch.cat([x,y], 1)
-        outp = self.main(inp)
-
-        return outp.view(-1, 1).squeeze(1)
 
 netG = Generator().to(device)
 netG.apply(weights_init)
@@ -208,7 +113,7 @@ for epoch in range(num_epochs):
         # 1.) Train with real images
         netD.zero_grad()
 
-        real_cpu = (data[0] + (torch.randn(128, 1, 28, 28) * std)).to(device)
+        real_cpu = (data[0] + (torch.randn(data[0].size(0), 1, 28, 28) * std)).to(device)
         b_size = real_cpu.size(0)
         y_fill = fill[torch.argmax(data[1], dim=1)].to(device)
 
@@ -223,11 +128,11 @@ for epoch in range(num_epochs):
         # 2.) Train with fake
         z_noise = torch.randn(b_size, nz, 1, 1, device=device)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y_label = onehot[y_noise].to(device)
+        y = onehot[y_noise].to(device)
         y_fill = fill[y_noise].to(device)
 
-        fake = netG(z_noise, y_label)
-        instance_noise = (torch.randn(128, 1, 28, 28) * std).to(device)
+        fake = netG(z_noise, y)
+        instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
         output = netD(fake.detach() + instance_noise, y_fill).view(-1)
 
         errD_fake = criterion(output, label_fake)
@@ -244,10 +149,10 @@ for epoch in range(num_epochs):
 
         z_noise = torch.randn(b_size, nz, 1, 1, device=device)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y_label = onehot[y_noise].to(device)
+        y = onehot[y_noise].to(device)
         y_fill = fill[y_noise].to(device)
 
-        fake = netG(z_noise, y_label)
+        fake = netG(z_noise, y)
         output = netD(fake, y_fill).view(-1)
 
         errG = criterion(output, label_real)
