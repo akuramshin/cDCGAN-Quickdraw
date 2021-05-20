@@ -115,12 +115,12 @@ for epoch in range(num_epochs):
 
         real_cpu = (data[0] + (torch.randn(data[0].size(0), 1, 28, 28) * std)).to(device)
         b_size = real_cpu.size(0)
-        y_fill = fill[torch.argmax(data[1], dim=1)].to(device)
+        label_fill = fill[data[1]].to(device)
 
         label_real = torch.full((b_size,), real_label, dtype=torch.float, device=device)
         label_fake = torch.full((b_size,), fake_label, dtype=torch.float, device=device)
 
-        output = netD(real_cpu, y_fill).view(-1)
+        output = netD(real_cpu, label_fill).view(-1)
         errD_real = criterion(output, label_real)
         errD_real.backward()
         D_x = output.mean().item()
@@ -133,7 +133,7 @@ for epoch in range(num_epochs):
 
         fake = netG(z_noise, y)
         instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
-        output = netD(fake.detach() + instance_noise, y_fill).view(-1)
+        output = netD(fake.detach(), y_fill).view(-1)
 
         errD_fake = criterion(output, label_fake)
         errD_fake.backward()
@@ -185,7 +185,7 @@ plt.plot(D_losses,label="D")
 plt.xlabel("iterations")
 plt.ylabel("Loss")
 plt.legend()
-plt.savefig('plot2.png')
+plt.savefig('images/plot2.png')
 #plt.show()
 
 fig = plt.figure(figsize=(8,8))
@@ -204,12 +204,12 @@ plt.subplot(1,2,1)
 plt.axis("off")
 plt.title("Real Images")
 #plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
-plt.imsave('real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)).numpy(), cmap="gray")
+plt.imsave('images/real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)).numpy(), cmap="gray")
 
 # Plot the fake images from the last epoch
 plt.subplot(1,2,2)
 plt.axis("off")
 plt.title("Fake Images")
 plt.imshow(np.transpose(img_list[-1],(1,2,0)))
-plt.imsave('fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
+plt.imsave('images/fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
 plt.show()
