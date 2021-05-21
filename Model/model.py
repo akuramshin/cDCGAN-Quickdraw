@@ -117,7 +117,8 @@ for epoch in range(num_epochs):
         std = std_list[iters]
 
         instance_noise = (torch.randn(data[0].size(0), 1, 28, 28) * std).to(device)
-        real_cpu = (data[0] + instance_noise).to(device)
+        real_cpu = data[0].to(device)
+        real_cpu += instance_noise
         b_size = real_cpu.size(0)
         label_fill = fill[data[1]].to(device)
 
