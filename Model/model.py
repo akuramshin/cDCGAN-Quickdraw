@@ -39,7 +39,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 5
+num_epochs = 4
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -118,7 +118,7 @@ for epoch in range(num_epochs):
 
         instance_noise = (torch.randn(data[0].size(0), 1, 28, 28) * std).to(device)
         real_cpu = data[0].to(device)
-        real_cpu += instance_noise
+        #real_cpu += instance_noise
         b_size = real_cpu.size(0)
         label_fill = fill[data[1]].to(device)
 
@@ -139,7 +139,7 @@ for epoch in range(num_epochs):
 
         fake = netG(z_noise, y)
         instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
-        output = netD(fake.detach() + instance_noise, y_fill).view(-1)
+        output = netD(fake.detach(), y_fill).view(-1)
 
         errD_fake = criterion(output, label_fake)
         errD_fake.backward()
