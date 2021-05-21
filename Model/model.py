@@ -39,7 +39,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 1
+num_epochs = 5
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -85,9 +85,10 @@ netD.apply(weights_init)
 
 criterion = nn.BCELoss()
 
-fixed_noise = torch.randn(64, nz, 1, 1, device=device)
+# fixed_noise = torch.randn(64, nz, 1, 1, device=device)
+fixed_noise = torch.randn(64, 1, 1, nz, device=device)
 fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10).view(64,10,1,1).to(device)
-real_label = 1.
+real_label = 0.9
 fake_label = 0.
 
 optimizerD = optim.Adam(netD.parameters(), lr=lr, betas=(beta1, 0.999))
@@ -97,6 +98,7 @@ optimizerG = optim.Adam(netG.parameters(), lr=lr, betas=(beta1, 0.999))
 img_list = []
 G_losses = []
 D_losses = []
+std_change = []
 iters = 0
 
 onehot = torch.zeros(10, 10)
@@ -105,15 +107,17 @@ fill = torch.zeros([10, 10, image_size, image_size])
 for i in range(10):
     fill[i, i, :, :] = 1
 
-std = 0.1
+std_list = [0.1-(0.1*i/(1600*5)) for i in range(1600*5)]
 print("Starting training loop...")
 for epoch in range(num_epochs):
     for i, data in enumerate(dataloader, 0):
         # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         # 1.) Train with real images
         netD.zero_grad()
+        std = std_list[iters]
 
-        real_cpu = (data[0] + (torch.randn(data[0].size(0), 1, 28, 28) * std)).to(device)
+        instance_noise = (torch.randn(data[0].size(0), 1, 28, 28) * std).to(device)
+        real_cpu = (data[0] + instance_noise).to(device)
         b_size = real_cpu.size(0)
         label_fill = fill[data[1]].to(device)
 
@@ -126,14 +130,15 @@ for epoch in range(num_epochs):
         D_x = output.mean().item()
 
         # 2.) Train with fake
-        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        #z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        z_noise = torch.randn(b_size, 1, 1, nz, device=device)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
         y = onehot[y_noise].to(device)
         y_fill = fill[y_noise].to(device)
 
         fake = netG(z_noise, y)
         instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
-        output = netD(fake.detach(), y_fill).view(-1)
+        output = netD(fake.detach() + instance_noise, y_fill).view(-1)
 
         errD_fake = criterion(output, label_fake)
         errD_fake.backward()
@@ -147,10 +152,10 @@ for epoch in range(num_epochs):
         # Update G network: maximize log(D(G(z)))
         netG.zero_grad()
 
-        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
-        y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-        y = onehot[y_noise].to(device)
-        y_fill = fill[y_noise].to(device)
+        # z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        # y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
+        # y = onehot[y_noise].to(device)
+        # y_fill = fill[y_noise].to(device)
 
         fake = netG(z_noise, y)
         output = netD(fake, y_fill).view(-1)
@@ -169,6 +174,7 @@ for epoch in range(num_epochs):
         # Save Losses for plotting later
         G_losses.append(errG.item())
         D_losses.append(errD.item())
+        std_change.append(std)
 
         # Check how the generator is doing by saving G's output on fixed_noise
         if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
@@ -182,10 +188,11 @@ plt.figure(figsize=(10,5))
 plt.title("Generator and Discriminator Loss During Training")
 plt.plot(G_losses,label="G")
 plt.plot(D_losses,label="D")
+plt.plot(std_change,label="σ")
 plt.xlabel("iterations")
 plt.ylabel("Loss")
 plt.legend()
-plt.savefig('images/plot2.png')
+plt.savefig('images/plot4.png')
 #plt.show()
 
 fig = plt.figure(figsize=(8,8))

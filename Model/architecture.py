@@ -49,22 +49,38 @@ class Generator(nn.Module):
         #     nn.ConvTranspose2d(ngf*2, nc, 4, 2, 1, bias=False),
         #     nn.Tanh()
         # )
+        # self.main = torch.nn.Sequential(
+        #     # nn.ConvTranspose2d(nz + ncat, ngf*2, 7, 1, 0, bias=False),
+        #     nn.ConvTranspose2d(nz, ngf*2, 7, 1, 0, bias=False),
+        #     nn.BatchNorm2d(ngf*2),
+        #     nn.ReLU(True),
+        #     nn.ConvTranspose2d(ngf*2, ngf, 4, 2, 1, bias=False),
+        #     nn.BatchNorm2d(ngf),
+        #     nn.ReLU(True),
+        #     nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
+        #     nn.Tanh()
+        # )
+        self.reshape = torch.nn.Sequential(
+            nn.Linear(100, 128*7*7),
+            nn.LeakyReLU(0.2),
+        )
         self.main = torch.nn.Sequential(
-            nn.ConvTranspose2d(nz + ncat, ngf*2, 7, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf*2),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(ngf*2, ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
-            nn.Tanh()
+            # nn.ConvTranspose2d(nz + ncat, ngf*2, 7, 1, 0, bias=False),
+            nn.ConvTranspose2d(128, 128, 4, 2, 1),
+            nn.LeakyReLU(0.2),
+            nn.ConvTranspose2d(128, 128, 4, 2, 1),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 1, 7, 1, 3),
+            nn.Sigmoid()
         )
     
     def forward(self, z, y):
         # y = self.y_deconv(y.float())
         # z = self.z_deconv(z)
-        inp = torch.cat([z, y], 1)
-        outp = self.main(inp)
+        #inp = torch.cat([z, y], 1)
+        z = self.reshape(z)
+        z = z.view(-1, 128, 7, 7)
+        outp = self.main(z)
 
         return outp
 
@@ -99,19 +115,23 @@ class Discriminator(nn.Module):
         #     nn.Sigmoid()
         # )
         self.main = nn.Sequential(
-            nn.Conv2d(nc+ncat, ndf*2, 5, 2, 0, bias=False),
+            # nn.Conv2d(nc+ncat, ndf*2, 5, 2, 0, bias=False),
+            nn.Conv2d(nc, ndf, 3, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf*2, ndf*4, 5, 2, 0, bias=False),
-            nn.BatchNorm2d(ndf*4),
+            nn.Conv2d(ndf, ndf, 3, 2, 1, bias=False),
+            nn.BatchNorm2d(ndf),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),
+            #nn.Conv2d(ndf*4, 1, 4, 1, 0, bias=False),
+            nn.Flatten(),
+            nn.Linear(7*7*ndf, 1, bias=False),
             nn.Sigmoid()
         )
 
     def forward(self, x, y):
         # y = self.y_conv(y)
         # x = self.x_conv(x)
-        inp = torch.cat([x,y], 1)
-        outp = self.main(inp)
+        #inp = torch.cat([x,y], 1)
+        outp = self.main(x)
 
         return outp.view(-1, 1).squeeze(1)
