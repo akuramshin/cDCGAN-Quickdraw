@@ -85,8 +85,8 @@ netD.apply(weights_init)
 
 criterion = nn.BCELoss()
 
-fixed_noise = torch.randn(64, nz, 1, 1, device=device)
-#fixed_noise = torch.randn(64, 1, 1, nz, device=device)
+# fixed_noise = torch.randn(64, nz, 1, 1, device=device)
+fixed_noise = torch.randn(64, 1, 1, nz, device=device)
 fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10).view(64,10,1,1).to(device)
 real_label = 0.9
 fake_label = 0.
@@ -131,8 +131,8 @@ for epoch in range(num_epochs):
         D_x = output.mean().item()
 
         # 2.) Train with fake
-        z_noise = torch.randn(b_size, nz, 1, 1, device=device)
-        #z_noise = torch.randn(b_size, 1, 1, nz, device=device)
+        # z_noise = torch.randn(b_size, nz, 1, 1, device=device)
+        z_noise = torch.randn(b_size, 1, 1, nz, device=device)
         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
         y = onehot[y_noise].to(device)
         y_fill = fill[y_noise].to(device)
