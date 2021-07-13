@@ -8,4 +8,4 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 download_data(["cat", "nose", "drill", "duck", "teddy-bear", "potato", "foot", "fish", "banana", "snail"])
-combine_data(200000)
+combine_data(100000)
