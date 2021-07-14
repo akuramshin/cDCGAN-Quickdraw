@@ -15,6 +15,7 @@ import torchvision.utils as vutils
 from architecture import Generator, Discriminator
 import numpy as np
 import matplotlib.pyplot as plt
+import itertools
 from torchvision import datasets, transforms
 import matplotlib.animation as animation
 from IPython.display import HTML
@@ -39,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 25
+num_epochs = 10
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -53,27 +54,27 @@ ngpu = 1
 
 # We can use an image folder dataset the way we have it setup.
 # Create the dataset
-dataset = QuickdrawDataset(datapath="data/X.npy",
-                           targetpath="data/y.npy",
-                           transform=transforms.Compose([
-                               transforms.Resize((28,28)),
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.15,), (0.3038,)), # Mean and std of the dataset
-                           ]))
+# dataset = QuickdrawDataset(datapath="data/X.npy",
+#                            targetpath="data/y.npy",
+#                            transform=transforms.Compose([
+#                                transforms.Resize((28,28)),
+#                                transforms.ToTensor(),
+#                                transforms.Normalize((0.15,), (0.3038,)), # Mean and std of the dataset
+#                            ]))
 
-# Create the dataloader
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+# # Create the dataloader
+# dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
 # MNIST Dataset
-# transform = transforms.Compose([
-#     transforms.ToTensor(),
-#     transforms.Normalize(mean=(0.1307, ), std=(0.3081, ))
-# ])
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=(0.1307, ), std=(0.3081, ))
+])
 
-# train_dataset = datasets.MNIST(root='./mnist_data/', train=True, transform=transform, download=True)
+train_dataset = datasets.MNIST(root='./mnist_data/', train=True, transform=transform, download=True)
 
-# # Data Loader
-# dataloader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+# Data Loader
+dataloader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
 device = torch.device("cuda:0" if (cudnn.is_available() and ngpu > 0) else "cpu")
 
@@ -96,7 +97,7 @@ netD.apply(weights_init)
 
 criterion = nn.BCELoss()
 
-fixed_noise = torch.randn(64, nz, 1, 1, device=device)
+fixed_noise = torch.randn(16, nz, 1, 1, device=device)
 #fixed_noise = torch.randn(64, 1, 1, nz, device=device)
 fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*64]).long(), 10).view(64,10,1,1).to(device)
 real_label = 0.9
@@ -111,6 +112,7 @@ G_losses = []
 D_losses = []
 std_change = []
 iters = 0
+generated_fake_images = None
 
 onehot = torch.zeros(10, 10)
 onehot = onehot.scatter_(1, torch.LongTensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).view(10,1), 1).view(10, 10, 1, 1)
@@ -165,15 +167,17 @@ for epoch in range(num_epochs):
             G_losses.append(lossG.item())
             D_losses.append(lossD.item())
 
-            # Check how the generator is doing by saving G's output on fixed_noise
-            if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
-                with torch.no_grad():
-                    fake = netG(fixed_noise, fixed_label).detach().cpu()
-                img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
-
             if (i+1)%100 == 0:
                 print('Epoch [{}/{}], step [{}/{}], d_loss: {:.4f}, g_loss: {:.4f}, D(x): {:.2f}, Discriminator - D(G(x)): {:.2f}, Generator - D(G(x)): {:.2f}'.format(epoch+1, num_epochs, 
                                                             i+1, len(dataloader), lossD.item(), lossG.item(), D_x, D_G_z1, D_G_z2))
+
+        # Check how the generator is doing by saving G's output on fixed_noise
+        netG.eval()
+        generated_fake_images = netG(fixed_noise, 1)
+
+
+
+
 # for epoch in range(num_epochs):
 #     for i, data in enumerate(dataloader, 0):
 #         # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
@@ -262,12 +266,12 @@ plt.legend()
 plt.savefig('images/plot4.png')
 #plt.show()
 
-fig = plt.figure(figsize=(8,8))
-plt.axis("off")
-ims = [[plt.imshow(np.transpose(i,(1,2,0)), animated=True)] for i in img_list]
-ani = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
+# fig = plt.figure(figsize=(8,8))
+# plt.axis("off")
+# ims = [[plt.imshow(np.transpose(i,(1,2,0)), animated=True)] for i in img_list]
+# ani = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
 
-HTML(ani.to_jshtml())
+# HTML(ani.to_jshtml())
 
 # Grab a batch of real images from the dataloader
 real_batch = next(iter(dataloader))
@@ -277,13 +281,26 @@ plt.figure(figsize=(15,15))
 plt.subplot(1,2,1)
 plt.axis("off")
 plt.title("Real Images")
-#plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
+plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
 plt.imsave('images/real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)).numpy(), cmap="gray")
 
 # Plot the fake images from the last epoch
-plt.subplot(1,2,2)
-plt.axis("off")
-plt.title("Fake Images")
-plt.imshow(np.transpose(img_list[-1],(1,2,0)))
-plt.imsave('images/fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
-plt.show()
+# plt.subplot(1,2,2)
+# plt.axis("off")
+# plt.title("Fake Images")
+# plt.imshow(np.transpose(img_list[-1],(1,2,0)))
+# plt.imsave('images/fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
+# plt.show()
+fig, ax = plt.subplots(4, 4, figsize=(6,6))
+for i, j in itertools.product(range(4), range(4)):
+    ax[i,j].get_xaxis().set_visible(False)
+    ax[i,j].get_yaxis().set_visible(False)
+for k in range(16):
+    i = k//4
+    j = k%4
+    ax[i,j].cla()
+    ax[i,j].imshow(generated_fake_images[k].data.cpu().numpy().reshape(28,28), cmap='Greys')
+label = 'Epoch_{}'.format(epoch+1)
+fig.text(0.5, 0.04, label, ha='center')
+fig.suptitle('Fixed Noise')
+fig.savefig("images/Epoch_{}.png".format(num_epochs))
