@@ -88,10 +88,10 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 def smooth_positive_labels(y):
-    return y - 0.3 + (torch.rand(y.shape) * 0.5)
+    return y - 0.3 + (torch.rand(y.shape) * 0.5).to(device)
 
 def smooth_negative_labels(y):
-    return y + (torch.rand(y.shape) * 0.3)
+    return y + (torch.rand(y.shape) * 0.3).to(device)
 
 def noisy_labels(y, p_flip):
     n_select = int(p_flip * y.shape[0])
@@ -149,7 +149,7 @@ for epoch in range(num_epochs):
 
             output = netD(real_images, 1)
             label = label.to(torch.float32)
-            smooth_positive_labels(label)
+            label = smooth_positive_labels(label)
             lossD_real = criterion(output, label)
             lossD_real.backward()
             D_x = output.mean().item()
@@ -159,7 +159,7 @@ for epoch in range(num_epochs):
             #instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
             label.fill_(fake_label)
             output = netD(fake_images.detach(), 1)
-            smooth_negative_labels(label)
+            label = smooth_negative_labels(label)
             lossD_fake = criterion(output, label)
             lossD_fake.backward()
             D_G_z1 = output.mean().item()
@@ -173,7 +173,7 @@ for epoch in range(num_epochs):
             netG.zero_grad()
             label.fill_(real_label)
             output = netD(fake_images, 1)
-            smooth_positive_labels(label)
+            label = smooth_positive_labels(label)
             lossG = criterion(output, label)
             lossG.backward()
             D_G_z2 = output.mean().item()
