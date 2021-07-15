@@ -9,7 +9,7 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
-from dataset import QuickdrawDataset
+from dataset import QuickdrawDataset, Rescale
 from noise_transform import AddGaussianNoise
 import torchvision.utils as vutils
 from architecture import Generator, Discriminator
@@ -40,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 10
+num_epochs = 25
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -59,7 +59,9 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
                            transform=transforms.Compose([
                                transforms.Resize((28,28)),
                                transforms.ToTensor(),
-                               transforms.Normalize((0.15,), (0.3038,)), # Mean and std of the dataset
+                               Rescale(),
+                               #transforms.Normalize((0.1575,), (0.3113,)), # Mean and std of the dataset
+                               transforms.Normalize((-0.6849,), (0.6227,))
                            ]))
 
 # Create the dataloader

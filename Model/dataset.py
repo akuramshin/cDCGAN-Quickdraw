@@ -4,6 +4,12 @@ import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
 
+class Rescale(object):
+    """ Rescale the image to the [-1, 1] range"""
+
+    def __call__(self, image):
+        return (image.float() - 0.5) / 0.5
+
 class QuickdrawDataset(Dataset):
 
 
@@ -26,3 +32,4 @@ class QuickdrawDataset(Dataset):
     
     def __len__(self):
         return len(self.data)
+
