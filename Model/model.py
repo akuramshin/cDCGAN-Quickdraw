@@ -40,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 25
+num_epochs = 50
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -181,10 +181,9 @@ for epoch in range(num_epochs):
             D_G_z2 = output.mean().item()
             optimizerG.step()
 
-            G_losses.append(lossG.item())
-            D_losses.append(lossD.item())
-
-            if (i+1)%100 == 0:
+            if (i+1)%150 == 0:
+                G_losses.append(lossG.item())
+                D_losses.append(lossD.item())
                 print('Epoch [{}/{}], step [{}/{}], d_loss: {:.4f}, g_loss: {:.4f}, D(x): {:.2f}, Discriminator - D(G(x)): {:.2f}, Generator - D(G(x)): {:.2f}'.format(epoch+1, num_epochs, 
                                                             i+1, len(dataloader), lossD.item(), lossG.item(), D_x, D_G_z1, D_G_z2))
 
