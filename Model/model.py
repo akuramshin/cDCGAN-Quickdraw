@@ -40,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 50
+num_epochs = 25
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -61,7 +61,7 @@ dataset = QuickdrawDataset(datapath="data/X.npy",
                                transforms.ToTensor(),
                                Rescale(),
                                #transforms.Normalize((0.1575,), (0.3113,)), # Mean and std of the dataset
-                               transforms.Normalize((-0.6849,), (0.6227,))
+                      #         transforms.Normalize((-0.6849,), (0.6227,))
                            ]))
 
 # Create the dataloader
@@ -161,7 +161,7 @@ for epoch in range(num_epochs):
             #instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
             label.fill_(fake_label)
             output = netD(fake_images.detach(), 1)
-            label = smooth_negative_labels(label)
+            #label = smooth_negative_labels(label)
             lossD_fake = criterion(output, label)
             lossD_fake.backward()
             D_G_z1 = output.mean().item()

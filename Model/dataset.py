@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 
 class Rescale(object):
-    """ Rescale the image to the [-1, 1] range"""
+    """ Rescale image from [0, 1] range to [-1, 1] range"""
 
     def __call__(self, image):
         return (image.float() - 0.5) / 0.5
