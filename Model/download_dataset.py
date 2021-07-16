@@ -7,5 +7,5 @@ import torchvision.utils as vutils
 import matplotlib.pyplot as plt
 import numpy as np
 
-download_data(["cat", "nose", "drill", "duck", "teddy-bear", "potato", "foot", "fish", "banana", "snail"])
+download_data(["cat", "envelope", "eyeglasses", "mushroom", "star", "baseball bat", "t-shirt", "car", "fish", "snail"])
 combine_data(100000)
