@@ -134,7 +134,7 @@ fill = torch.zeros([10, 10, image_size, image_size])
 for i in range(10):
     fill[i, i, :, :] = 1
 
-#std_list = [0.1-(0.1*i/(1600*5)) for i in range(1600*5)]
+#std_list = [0.1-(0.1*i/(2000)) for i in range(2000)]
 print("Starting training loop...")
 for epoch in range(num_epochs):
         for i, (real_images, _) in enumerate(dataloader):
@@ -144,21 +144,21 @@ for epoch in range(num_epochs):
             ##############################
 
             netD.zero_grad()
-            #std = std_list[iters]
-            #instance_noise = (torch.randn(data[0].size(0), 1, 28, 28) * std).to(device)
-            real_images = real_images.to(device)
+            std = 0.1 - ((0.1*iters)/2000)
+            instance_noise = (torch.randn(bs, 1, 28, 28) * std).to(device)
+            real_images = real_images.to(device) + instance_noise
             label = torch.full((bs,), real_label, dtype=torch.float, device=device)
 
             output = netD(real_images, 1)
             label = label.to(torch.float32)
-            label = noisy_labels(label, 0.05)
+            label = smooth_positive_labels(label)
             lossD_real = criterion(output, label)
             lossD_real.backward()
             D_x = output.mean().item()
 
             noise = torch.randn(bs, nz, 1, 1, device=device)
-            fake_images = netG(noise, 1)
-            #instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
+            instance_noise = (torch.randn(bs, 1, 28, 28) * std).to(device)
+            fake_images = netG(noise, 1) + instance_noise
             label.fill_(fake_label)
             output = netD(fake_images.detach(), 1)
             #label = smooth_negative_labels(label)
@@ -176,7 +176,7 @@ for epoch in range(num_epochs):
             netG.zero_grad()
             label.fill_(real_label)
             output = netD(fake_images, 1)
-            label = noisy_labels(label, 0.05)
+            label = smooth_positive_labels(label)
             lossG = criterion(output, label)
             lossG.backward()
             D_G_z2 = output.mean().item()
@@ -187,6 +187,9 @@ for epoch in range(num_epochs):
                 D_losses.append(lossD.item())
                 print('Epoch [{}/{}], step [{}/{}], d_loss: {:.4f}, g_loss: {:.4f}, D(x): {:.2f}, Discriminator - D(G(x)): {:.2f}, Generator - D(G(x)): {:.2f}'.format(epoch+1, num_epochs, 
                                                             i+1, len(dataloader), lossD.item(), lossG.item(), D_x, D_G_z1, D_G_z2))
+
+            iters += 1
+            std_change.append(std)
 
         # Check how the generator is doing by saving G's output on fixed_noise
         netG.eval()
