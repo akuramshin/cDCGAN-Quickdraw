@@ -21,8 +21,8 @@ import matplotlib.animation as animation
 from IPython.display import HTML
 
 # Set random seed for reproducibility
-manualSeed = 999
-#manualSeed = random.randint(1, 10000) # use if you want new results
+#manualSeed = 999
+manualSeed = random.randint(1, 10000) # use if you want new results
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
@@ -40,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 25
+num_epochs = 50
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -144,7 +144,7 @@ for epoch in range(num_epochs):
             ##############################
 
             netD.zero_grad()
-            std = 0.1 - ((0.1*iters)/2000)
+            std = max(0, 0.1 - ((0.1*iters)/35000))
             instance_noise = (torch.randn(bs, 1, 28, 28) * std).to(device)
             real_images = real_images.to(device) + instance_noise
             label = torch.full((bs,), real_label, dtype=torch.float, device=device)
@@ -182,14 +182,18 @@ for epoch in range(num_epochs):
             D_G_z2 = output.mean().item()
             optimizerG.step()
 
+            #G_losses.append(lossG.item())
+            #D_losses.append(lossD.item())
+
             if (i+1)%150 == 0:
                 G_losses.append(lossG.item())
                 D_losses.append(lossD.item())
+                std_change.append(std)
                 print('Epoch [{}/{}], step [{}/{}], d_loss: {:.4f}, g_loss: {:.4f}, D(x): {:.2f}, Discriminator - D(G(x)): {:.2f}, Generator - D(G(x)): {:.2f}'.format(epoch+1, num_epochs, 
                                                             i+1, len(dataloader), lossD.item(), lossG.item(), D_x, D_G_z1, D_G_z2))
 
             iters += 1
-            std_change.append(std)
+            #std_change.append(std)
 
         # Check how the generator is doing by saving G's output on fixed_noise
         netG.eval()
@@ -276,13 +280,17 @@ for epoch in range(num_epochs):
 
 #         iters += 1
 
-plt.figure(figsize=(10,5))
+fig, ax1 = plt.subplots()
+#plt.figure(figsize=(10,5))
 plt.title("Generator and Discriminator Loss During Training")
-plt.plot(G_losses,label="G")
-plt.plot(D_losses,label="D")
-plt.plot(std_change,label="σ")
-plt.xlabel("iterations")
-plt.ylabel("Loss")
+ax1.plot(G_losses,label="G", color='tab:red')
+ax1.plot(D_losses,label="D", color='tab:blue')
+ax1.set_xlabel("iterations")
+ax1.set_ylabel("Loss")
+
+ax2 = ax1.twinx()
+ax2.plot(std_change,label="σ", color='tab:green')
+ax2.set_ylabel("std")
 plt.legend()
 plt.savefig('images/plot4.png')
 #plt.show()
