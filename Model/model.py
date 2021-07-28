@@ -105,7 +105,7 @@ def noisy_labels(y, p_flip):
 # fixed_noise = torch.randn(16, nz, 1, 1, device=device)
 # fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*16]).long(), 10).view(16,10,1,1).to(device)
 
-temp_noise = torch.randn(10, 100, device=device)
+temp_noise = torch.randn(10, 100)
 fixed_noise = temp_noise
 fixed_label_noise = torch.zeros(10, 1)
 for i in range(9):
@@ -113,10 +113,10 @@ for i in range(9):
     temp = torch.ones(10, 1) + i
     fixed_label_noise = torch.cat([fixed_label_noise, temp], 0)
 
-fixed_noise = fixed_noise.view(-1, 100, 1, 1)
+fixed_noise = fixed_noise.view(-1, 100, 1, 1).to(device)
 fixed_label = torch.zeros(100, 10)
 fixed_label.scatter_(1, fixed_label_noise.type(torch.LongTensor), 1)
-fixed_label = fixed_label.view(-1, 10, 1, 1)
+fixed_label = fixed_label.view(-1, 10, 1, 1).to(device)
 
 def save_epoch_result(epoch):
     netG.eval()
@@ -135,7 +135,7 @@ def save_epoch_result(epoch):
 
     fig.text(0.5, 0.04, "Epoch {}".format(epoch), ha='center')
     fig.suptitle('Fixed Noise')
-    fig.savefig("images/Epoch_{}.png".format(num_epochs))
+    fig.savefig("images/Epoch_{}.png".format(epoch))
 
 
 netG = Generator().to(device)
