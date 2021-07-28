@@ -2,6 +2,7 @@ from __future__ import print_function
 #%matplotlib inline
 import argparse
 import os
+import imageio
 import random
 import torch
 import torch.nn as nn
@@ -101,6 +102,40 @@ def noisy_labels(y, p_flip):
     y[flip_ix] = 1 - y[flip_ix]
     return y
 
+# fixed_noise = torch.randn(16, nz, 1, 1, device=device)
+# fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*16]).long(), 10).view(16,10,1,1).to(device)
+
+temp_noise = torch.randn(10, 100, device=device)
+fixed_noise = temp_noise
+fixed_label_noise = torch.zeros(10, 1)
+for i in range(9):
+    fixed_noise = torch.cat([fixed_noise, temp_noise], 0)
+    temp = torch.ones(10, 1) + i
+    fixed_label_noise = torch.cat([fixed_label_noise, temp], 0)
+
+fixed_noise = fixed_noise.view(-1, 100, 1, 1)
+fixed_label = torch.zeros(100, 10)
+fixed_label.scatter_(1, fixed_label_noise.type(torch.LongTensor), 1)
+fixed_label = fixed_label.view(-1, 10, 1, 1)
+
+def save_epoch_result(epoch):
+    netG.eval()
+    generated_fake_images = netG(fixed_noise, fixed_label)
+    netG.train()
+
+    fig, ax = plt.subplots(10, 10, figsize=(5,5))
+    for i, j in itertools.product(range(10), range(10)):
+        ax[i,j].get_xaxis().set_visible(False)
+        ax[i,j].get_yaxis().set_visible(False)
+    for k in range(100):
+        i = k//10
+        j = k%10
+        ax[i,j].cla()
+        ax[i,j].imshow(generated_fake_images[k].data.cpu().numpy().reshape(28,28), cmap='Greys')
+
+    fig.text(0.5, 0.04, "Epoch {}".format(epoch), ha='center')
+    fig.suptitle('Fixed Noise')
+    fig.savefig("images/Epoch_{}.png".format(num_epochs))
 
 
 netG = Generator().to(device)
@@ -111,9 +146,6 @@ netD.apply(weights_init)
 
 criterion = nn.BCELoss()
 
-fixed_noise = torch.randn(16, nz, 1, 1, device=device)
-#fixed_noise = torch.randn(64, 1, 1, nz, device=device)
-fixed_label = torch.nn.functional.one_hot(torch.Tensor([[3]*16]).long(), 10).view(16,10,1,1).to(device)
 real_label = 1
 fake_label = 0
 
@@ -212,89 +244,7 @@ for epoch in range(num_epochs):
             #std_change.append(std)
 
         # Check how the generator is doing by saving G's output on fixed_noise
-        netG.eval()
-        generated_fake_images = netG(fixed_noise, fixed_label)
-        netG.train()
-
-
-
-
-# for epoch in range(num_epochs):
-#     for i, data in enumerate(dataloader, 0):
-#         # Update D network: maximize log(D(x)) + log(1 - D(G(z)))
-#         # 1.) Train with real images
-#         netD.zero_grad()
-#         #std = std_list[iters]
-
-#         #instance_noise = (torch.randn(data[0].size(0), 1, 28, 28) * std).to(device)
-#         real = data[0].to(device)
-#         #real_cpu += instance_noise
-#         b_size = real.size(0)
-#         label_fill = fill[data[1]].to(device)
-
-#         label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
-#         #label_real = torch.full((b_size,), real_label, dtype=torch.float, device=device)
-
-#         output = netD(real, label_fill)
-#         errD_real = criterion(output, label)
-#         errD_real.backward()
-#         D_x = output.mean().item()
-
-#         # 2.) Train with fake
-#         #z_noise = torch.randn(b_size, 1, 1, nz, device=device)
-#         z_noise = torch.randn(b_size, nz, 1, 1, device=device)
-
-#         y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-#         y = onehot[y_noise].to(device)
-#         y_fill = fill[y_noise].to(device)
-
-#         fake = netG(z_noise, y)
-#         #instance_noise = (torch.randn(b_size, 1, 28, 28) * std).to(device)
-#         output = netD(fake.detach(), y_fill)
-
-#         label.fill_(fake_label)
-#         errD_fake = criterion(output, label)
-#         errD_fake.backward()
-#         D_G_z1 = output.mean().item()
-#         errD = errD_real + errD_fake
-
-#         optimizerD.step()
-
-#         # Update G network: maximize log(D(G(z)))
-#         netG.zero_grad()
-#         label.fill_(real_label)
-
-#         # z_noise = torch.randn(b_size, nz, 1, 1, device=device)
-#         # y_noise = (torch.rand(b_size, 1)*10).type(torch.LongTensor).squeeze()
-#         # y = onehot[y_noise].to(device)
-#         # y_fill = fill[y_noise].to(device)
-
-#         #fake = netG(z_noise, y)
-#         output = netD(fake.detach(), y_fill)
-
-#         errG = criterion(output, label)
-#         errG.backward()
-#         D_G_z2 = output.mean().item()
-#         optimizerG.step()
-
-#         # Output training stats
-#         if i % 50 == 0:
-#             print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-#                   % (epoch, num_epochs, i, len(dataloader),
-#                      errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
-
-#         # Save Losses for plotting later
-#         G_losses.append(errG.item())
-#         D_losses.append(errD.item())
-#         #std_change.append(std)
-
-#         # Check how the generator is doing by saving G's output on fixed_noise
-#         if (iters % 500 == 0) or ((epoch == num_epochs-1) and (i == len(dataloader)-1)):
-#             with torch.no_grad():
-#                 fake = netG(fixed_noise, fixed_label).detach().cpu()
-#             img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
-
-#         iters += 1
+        save_epoch_result(epoch)
 
 fig, ax1 = plt.subplots()
 #plt.figure(figsize=(10,5))
@@ -336,15 +286,12 @@ plt.imsave('images/real.png', np.transpose(vutils.make_grid(real_batch[0].to(dev
 # plt.imshow(np.transpose(img_list[-1],(1,2,0)))
 # plt.imsave('images/fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
 # plt.show()
-fig, ax = plt.subplots(4, 4, figsize=(6,6))
-for i, j in itertools.product(range(4), range(4)):
-    ax[i,j].get_xaxis().set_visible(False)
-    ax[i,j].get_yaxis().set_visible(False)
-for k in range(16):
-    i = k//4
-    j = k%4
-    ax[i,j].cla()
-    ax[i,j].imshow(generated_fake_images[k].data.cpu().numpy().reshape(28,28), cmap='Greys')
-fig.text(0.5, 0.04, label, ha='center')
-fig.suptitle('Fixed Noise')
-fig.savefig("images/Epoch_{}.png".format(num_epochs))
+
+torch.save(netG.state_dict(), 'results/generator_param.pkl')
+torch.save(netD.state_dict(), 'results/discriminator_param.pkl')
+
+images = []
+for e in range(num_epochs):
+    img_name = "images/Epoch_{}.png".format(e)
+    images.append(imageio.imread(img_name))
+imageio.mimsave('results/generation_animation.gif', images, fps=5)
