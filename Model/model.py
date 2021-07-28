@@ -40,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 50
+num_epochs = 25
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -137,30 +137,38 @@ for i in range(10):
 #std_list = [0.1-(0.1*i/(2000)) for i in range(2000)]
 print("Starting training loop...")
 for epoch in range(num_epochs):
-        for i, (real_images, _) in enumerate(dataloader):
+        for i, (real_images, real_label) in enumerate(dataloader):
             bs = real_images.shape[0]
+
             ##############################
             #   Training discriminator   #
             ##############################
 
+            # 1.) Train with real
             netD.zero_grad()
             std = max(0, 0.1 - ((0.1*iters)/35000))
             instance_noise = (torch.randn(bs, 1, 28, 28) * std).to(device)
             real_images = real_images.to(device) + instance_noise
             label = torch.full((bs,), real_label, dtype=torch.float, device=device)
+            label_fill = fill[real_label].to(device)
 
-            output = netD(real_images, 1)
+            output = netD(real_images, label_fill).squeeze()
             label = label.to(torch.float32)
             label = smooth_positive_labels(label)
             lossD_real = criterion(output, label)
             lossD_real.backward()
             D_x = output.mean().item()
 
+            # 2.) Train with fake
             noise = torch.randn(bs, nz, 1, 1, device=device)
             instance_noise = (torch.randn(bs, 1, 28, 28) * std).to(device)
-            fake_images = netG(noise, 1) + instance_noise
+            y_noise = (torch.rand(bs, 1)*10).type(torch.LongTensor).squeeze()
+            y = onehot[y_noise].to(device)
+            y_fill = fill[y].to(device)
+
+            fake_images = netG(noise, y) + instance_noise
             label.fill_(fake_label)
-            output = netD(fake_images.detach(), 1)
+            output = netD(fake_images.detach(), y_fill)
             #label = smooth_negative_labels(label)
             label = noisy_labels(label, 0.05)
             lossD_fake = criterion(output, label)
@@ -174,8 +182,16 @@ for epoch in range(num_epochs):
             ##########################
 
             netG.zero_grad()
+
             label.fill_(real_label)
-            output = netD(fake_images, 1)
+            noise = torch.randn(bs, nz, 1, 1, device=device)
+            instance_noise = (torch.randn(bs, 1, 28, 28) * std).to(device)
+            y_noise = (torch.rand(bs, 1)*10).type(torch.LongTensor).squeeze()
+            y = onehot[y_noise].to(device)
+            y_fill = fill[y].to(device)
+            fake_images = netG(noise, y) + instance_noise
+
+            output = netD(fake_images, y_fill)
             label = smooth_positive_labels(label)
             lossG = criterion(output, label)
             lossG.backward()
