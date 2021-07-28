@@ -45,7 +45,7 @@ class Generator(nn.Module):
         )
 
         self.main = torch.nn.Sequential(
-            nn.ConvTranspose2d(ngf*16, ngf*8, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf*16, ngf*8, 3, 2, 1, bias=False),
             nn.BatchNorm2d(ngf*8),
             nn.ReLU(True),
 
@@ -116,7 +116,7 @@ class Discriminator(nn.Module):
             nn.BatchNorm2d(ndf*8),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf*8, ndf*16, 4, 2, 1, bias=False),
+            nn.Conv2d(ndf*8, ndf*16, 3, 2, 1, bias=False),
             nn.BatchNorm2d(ndf*16),
             nn.LeakyReLU(0.2, inplace=True),
 
