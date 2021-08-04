@@ -130,6 +130,7 @@ if train:
     # Create the dataloader
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
+
     netG = Generator().to(device)
     netG.apply(weights_init)
 
@@ -233,7 +234,6 @@ if train:
                                                                 i+1, len(dataloader), lossD.item(), lossG.item(), D_x, D_G_z1, D_G_z2))
 
                 iters += 1
-                #std_change.append(std)
 
             # Check how the generator is doing by saving G's output on fixed_noise
             save_epoch_result(epoch)
@@ -290,7 +290,7 @@ if train:
 
 else:
     netG = Generator()
-    netG.load_state_dict(torch.load('results/generator_param.pkl', map_location=torch.device('cpu')))
+    netG.load_state_dict(torch.load('results/generator_param.pkl', map_location=torch.device(device)))
 
     save_epoch_result(24, 10)
 
