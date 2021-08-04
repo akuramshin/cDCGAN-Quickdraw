@@ -28,6 +28,7 @@ def combine_data(dataset_size):
         path = mypath + filename
         x = np.load(path)
         y = [i] * len(x)
+        print("{}: {}".format(i, filename))
 
         np.random.shuffle(x)
         x = x[:cat_size]
