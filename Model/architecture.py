@@ -54,15 +54,15 @@ class Generator(nn.Module):
         )
 
         self.main2 = torch.nn.Sequential(
-            nn.ConvTranspose2d(nz + ncat, ngf*8, 7, 2, 0, bias=False),
+            nn.ConvTranspose2d(nz + ncat, ngf*8, 7, 1, 0, bias=False),
             nn.BatchNorm2d(ngf*8),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d(ngf*8, ngf*4, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.ConvTranspose2d(ngf*8, ngf*4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ngf*4),
             nn.ReLU(True),
 
-            nn.ConvTranspose2d(ngf*4, 1, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.ConvTranspose2d(ngf*4, 1, 4, 2, 1, bias=False),
             nn.Tanh()
         )
     
@@ -135,11 +135,11 @@ class Discriminator(nn.Module):
         )
         
         self.main2 = nn.Sequential(
-            nn.Conv2d(ncat + nc, ndf*4, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.Conv2d(ncat + nc, ndf*4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf*4),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(ndf*4, ndf*8, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.Conv2d(ndf*4, ndf*8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(ndf*8),
             nn.LeakyReLU(0.2, inplace=True),
 

@@ -236,7 +236,7 @@ if train:
                 iters += 1
 
             # Check how the generator is doing by saving G's output on fixed_noise
-            save_epoch_result(epoch)
+            save_epoch_result(epoch, 10)
 
     fig, ax1 = plt.subplots()
     #plt.figure(figsize=(10,5))
