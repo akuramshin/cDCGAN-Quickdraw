@@ -10,6 +10,23 @@ We can generate data conditioned on class labels by providing the GAN network wi
 1. The discrimination will now have label data, which will help with training, making for a stronger discriminator.
 2. The generator will now be able to draw images of the given label.
 
+## Results
+Images generated with fixed noise over training:
+<img src = 'Model/results/animation_25epochs.gif'>
+
+<table align='center'>
+<tr align='center'>
+<td> MNIST </td>
+<td> cDCGAN after 25 epochs </td>
+<td> cDCGAN training </td>
+</tr>
+<tr>
+<td><img src = 'Model/results/real.png'>
+<td><img src = 'Model/results/Epoch_24.png'>
+<td><img src = 'Model/results/animation_25epochs.gif'>
+</tr>
+</table>
+
 ## References
 
 [1] [https://arxiv.org/pdf/1511.06434.pdf](https://arxiv.org/pdf/1511.06434.pdf)
