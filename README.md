@@ -11,21 +11,20 @@ We can generate data conditioned on class labels by providing the GAN network wi
 2. The generator will now be able to draw images of the given label.
 
 ## Results
-Images generated with fixed noise over training:
-<img src = 'Model/results/animation_25epochs.gif'>
-
+Results compared to real images:
 <table align='center'>
 <tr align='center'>
 <td> MNIST </td>
 <td> cDCGAN after 25 epochs </td>
-<td> cDCGAN training </td>
 </tr>
 <tr>
 <td><img src = 'Model/results/real.png'>
 <td><img src = 'Model/results/Epoch_24.png'>
-<td><img src = 'Model/results/animation_25epochs.gif'>
 </tr>
 </table>
+
+Images generated with fixed noise over training:
+<img src = 'Model/results/animation_25epochs.gif'>
 
 ## References
 
