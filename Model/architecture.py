@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn.modules.batchnorm import BatchNorm2d
 
 
 # Number of channels in the training images. For color images this is 3
@@ -39,11 +40,6 @@ class Generator(nn.Module):
             nn.ReLU(True),
         )
 
-        self.reshape = torch.nn.Sequential(
-            nn.Linear(100, 128*7*7),
-            nn.LeakyReLU(0.2),
-        )
-
         self.main = torch.nn.Sequential(
             nn.ConvTranspose2d(ngf*16, ngf*8, 3, 2, 1, bias=False),
             nn.BatchNorm2d(ngf*8),
@@ -56,15 +52,29 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(ngf*4, nc, 4, 2, 1, bias=False),
             nn.Tanh()
         )
+
+        self.main2 = torch.nn.Sequential(
+            nn.ConvTranspose2d(nz + ncat, ngf*8, 7, 2, 0, bias=False),
+            nn.BatchNorm2d(ngf*8),
+            nn.ReLU(True),
+
+            nn.ConvTranspose2d(ngf*8, ngf*4, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.BatchNorm2d(ngf*4),
+            nn.ReLU(True),
+
+            nn.ConvTranspose2d(ngf*4, 1, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.Tanh()
+        )
     
     def forward(self, z, y):
-        y = self.y_deconv(y.float())
-        z = self.z_deconv(z)
+        # Architecture with 1 + 3 layers
+        # y = self.y_deconv(y.float())
+        # z = self.z_deconv(z)
+        # inp = torch.cat([z, y], 1)
+        # outp = self.main(inp)
+
         inp = torch.cat([z, y], 1)
-        #z = self.reshape(z)
-        #z = z.view(-1, 128, 7, 7)
-        #print(z.shape)
-        outp = self.main(inp)
+        outp = self.main2(inp)
 
         return outp
 
@@ -123,12 +133,29 @@ class Discriminator(nn.Module):
             nn.Conv2d(ndf*16, 1, 4, 1, 0, bias=False),
             nn.Sigmoid()
         )
+        
+        self.main2 = nn.Sequential(
+            nn.Conv2d(ncat + nc, ndf*4, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.BatchNorm2d(ndf*4),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ndf*4, ndf*8, 5, 2, (2, 1, 2, 1), bias=False),
+            nn.BatchNorm2d(ndf*8),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(ndf*8, 1, 7, 1, 0, bias=False),
+            nn.Sigmoid()
+        )
 
     def forward(self, x, y):
-        y = self.y_conv(y)
-        x = self.x_conv(x)
-        inp = torch.cat([x,y], 1)
-        outp = self.main(inp)
+        # Architecture with 1 + 3 layers
+        # y = self.y_conv(y)
+        # x = self.x_conv(x)
+        # inp = torch.cat([x,y], 1)
+        # outp = self.main(inp)
+
+        inp = torch.cat([x, y], 1)
+        outp = self.main2(inp)
 
         #return outp.view(-1, 1).squeeze(1)
         return outp
