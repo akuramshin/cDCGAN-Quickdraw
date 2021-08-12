@@ -12,6 +12,7 @@ import torch.optim as optim
 import torch.utils.data
 from dataset import QuickdrawDataset, Rescale
 from noise_transform import AddGaussianNoise
+from dataset_loader import download_data, combine_data
 import torchvision.utils as vutils
 from architecture import Generator, Discriminator
 import numpy as np
@@ -40,7 +41,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 2
+num_epochs = 30
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -117,6 +118,10 @@ def save_epoch_result(epoch, num_images):
 
 
 if train:
+    if download:
+        download_data(["cat", "envelope", "eyeglasses", "mushroom", "star", "baseball bat", "t-shirt", "car", "fish", "snail"])
+        combine_data(100000)
+
     # We can use an image folder dataset the way we have it setup.
     # Create the dataset
     dataset = QuickdrawDataset(datapath="data/X.npy",
@@ -241,16 +246,17 @@ if train:
     plt.title("Generator and Discriminator Loss During Training")
     ax1.plot(G_losses,label="G", color='tab:red')
     ax1.plot(D_losses,label="D", color='tab:blue')
-    ax1.set_xlabel("iterations")
+    ax1.set_xlabel("Epochs")
     ax1.set_ylabel("Loss")
     ax1.legend(loc=0)
-    ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Save the plot of training error and instance noise
     ax2 = ax1.twinx()
     ax2.plot(std_change,label="σ", color='tab:green')
     ax2.set_ylabel("std")
     ax2.legend(loc=0)
+    ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.savefig('images/plot.png')
 
     # Grab a batch of real images from the dataloader

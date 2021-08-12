@@ -13,10 +13,11 @@ def download_data(categories):
         open("temp/{}.npy".format(cat), 'wb').write(r.content)
 
 
+# Creates a dataset of size *dataset_size* with evenly sized categories
 def combine_data(dataset_size):
     mypath = "temp/"
     filename_list = []
-    for (dirpath, dirnames, filenames) in walk(mypath):
+    for (_, _, filenames) in walk(mypath):
         filename_list.extend(filenames)
         break
 
