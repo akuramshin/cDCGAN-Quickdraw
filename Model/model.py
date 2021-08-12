@@ -17,9 +17,7 @@ from architecture import Generator, Discriminator
 import numpy as np
 import matplotlib.pyplot as plt
 import itertools
-from torchvision import datasets, transforms
-import matplotlib.animation as animation
-from IPython.display import HTML
+from torchvision import transforms
 
 # Set random seed for reproducibility
 #manualSeed = 999
@@ -159,7 +157,6 @@ if train:
     for i in range(10):
         fill[i, i, :, :] = 1
 
-    #std_list = [0.1-(0.1*i/(2000)) for i in range(2000)]
     print("Starting training loop...")
     for epoch in range(num_epochs):
             for i, (real_images, y_) in enumerate(dataloader):
@@ -178,7 +175,6 @@ if train:
                 label_fill = fill[y_].to(device)
 
                 output = netD(real_images, label_fill).squeeze()
-                #label = label.to(torch.float32)
                 label = smooth_positive_labels(label)
                 lossD_real = criterion(output, label)
                 lossD_real.backward()
@@ -223,13 +219,7 @@ if train:
                 D_G_z2 = output.mean().item()
                 optimizerG.step()
 
-                #G_losses.append(lossG.item())
-                #D_losses.append(lossD.item())
-
                 if (i+1)%150 == 0:
-                    G_losses.append(lossG.item())
-                    D_losses.append(lossD.item())
-                    std_change.append(std)
                     print('Epoch [{}/{}], step [{}/{}], d_loss: {:.4f}, g_loss: {:.4f}, D(x): {:.2f}, Discriminator - D(G(x)): {:.2f}, Generator - D(G(x)): {:.2f}'.format(epoch+1, num_epochs, 
                                                                 i+1, len(dataloader), lossD.item(), lossG.item(), D_x, D_G_z1, D_G_z2))
 
@@ -238,27 +228,24 @@ if train:
             # Check how the generator is doing by saving G's output on fixed_noise
             save_epoch_result(epoch, 10)
 
+            # Save our training error
+            G_losses.append(lossG.item())
+            D_losses.append(lossD.item())
+            std_change.append(std)
+
     fig, ax1 = plt.subplots()
-    #plt.figure(figsize=(10,5))
     plt.title("Generator and Discriminator Loss During Training")
     ax1.plot(G_losses,label="G", color='tab:red')
     ax1.plot(D_losses,label="D", color='tab:blue')
     ax1.set_xlabel("iterations")
     ax1.set_ylabel("Loss")
 
+    # Save the plot of training error and instance noise
     ax2 = ax1.twinx()
     ax2.plot(std_change,label="σ", color='tab:green')
     ax2.set_ylabel("std")
     plt.legend()
-    plt.savefig('images/plot4.png')
-    #plt.show()
-
-    # fig = plt.figure(figsize=(8,8))
-    # plt.axis("off")
-    # ims = [[plt.imshow(np.transpose(i,(1,2,0)), animated=True)] for i in img_list]
-    # ani = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
-
-    # HTML(ani.to_jshtml())
+    plt.savefig('images/plot.png')
 
     # Grab a batch of real images from the dataloader
     real_batch = next(iter(dataloader))
@@ -271,14 +258,7 @@ if train:
     plt.imshow(np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)))
     plt.imsave('images/real.png', np.transpose(vutils.make_grid(real_batch[0].to(device)[:64], padding=5, normalize=True).cpu(),(1,2,0)).numpy(), cmap="gray")
 
-    # Plot the fake images from the last epoch
-    # plt.subplot(1,2,2)
-    # plt.axis("off")
-    # plt.title("Fake Images")
-    # plt.imshow(np.transpose(img_list[-1],(1,2,0)))
-    # plt.imsave('images/fake2.png', np.transpose(img_list[-1],(1,2,0)).numpy(), cmap="gray")
-    # plt.show()
-
+    # Save the models
     torch.save(netG.state_dict(), 'results/generator_param.pkl')
     torch.save(netD.state_dict(), 'results/discriminator_param.pkl')
 
