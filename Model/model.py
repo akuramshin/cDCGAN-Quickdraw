@@ -18,6 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 from torchvision import transforms
+from matplotlib.ticker import MaxNLocator
 
 # Set random seed for reproducibility
 #manualSeed = 999
@@ -39,7 +40,7 @@ image_size = 28
 nz = 100
 
 # Number of training epochs
-num_epochs = 25
+num_epochs = 2
 
 # Learning rate for optimizers
 lr = 0.0002
@@ -51,7 +52,10 @@ beta1 = 0.5
 ngpu = 1
 
 # If we want to train or test the model
-train = False
+train = True
+
+# If we need to download the dataset
+download = False
 
 device = torch.device("cuda:0" if (cudnn.is_available() and ngpu > 0) else "cpu")
 
@@ -239,12 +243,14 @@ if train:
     ax1.plot(D_losses,label="D", color='tab:blue')
     ax1.set_xlabel("iterations")
     ax1.set_ylabel("Loss")
+    ax1.legend(loc=0)
+    ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Save the plot of training error and instance noise
     ax2 = ax1.twinx()
     ax2.plot(std_change,label="σ", color='tab:green')
     ax2.set_ylabel("std")
-    plt.legend()
+    ax2.legend(loc=0)
     plt.savefig('images/plot.png')
 
     # Grab a batch of real images from the dataloader
