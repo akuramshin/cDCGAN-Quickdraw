@@ -16,12 +16,15 @@ The initial model design is based on the papers [1] and [4] with addition to PyT
 * Favouring a simpler model in the form of less convolutional layers decreased training time and increased model stability. My generative model contains two layers of batch-normalized convolutional transpose (ConvTranspose) layers using ReLu activation and a final ConvTranspose layer with a Tanh activation. My discriminator model contains two batch-normalized convolutional layers with LeakyReLu activations with a final conv layer with a sigmoid activation. Additionally, for both models I decided to simply concatenate the conditioning label with the input with no separate processing.
 * GANs are really hard to train. Using tricks like instance noise [6], label smoothing [7] and label noise help our generator by making the discriminator's job harder.
 
+I wrote a custom PyTorch dataset class for Google's "Quick, Draw!" dataset. I also wrote a script to download the parts of the dataset that the user is interested in (i.e. [drawing categories](https://quickdraw.withgoogle.com/data)).
+
+
 ## Results
 * Results compared to real images:
 <table align='center'>
   <tr align='center'>
     <td> Quick, Draw! </td>
-    <td> cDCGAN after 25 epochs </td>
+    <td> cDCGAN after 30 epochs </td>
   </tr>
   <tr>
     <td><img src = 'Model/results/real.png'>
@@ -33,9 +36,11 @@ The initial model design is based on the papers [1] and [4] with addition to PyT
 <table align='center'>
   <tr align='center'>
     <td> Training over time </td>
+    <td> Loss over time </td>
   </tr>
   <tr>
     <td><img src = 'Model/results/generation_animation.gif'>
+    <td><img src = 'Model/results/plot.png'>
   </tr>
 </table>
 
