@@ -25,7 +25,7 @@ The initial model design is based on the papers [1] and [4] with addition to PyT
   </tr>
   <tr>
     <td><img src = 'Model/results/real.png'>
-    <td><img src = 'Model/results/Epoch_24.png'>
+    <td><img src = 'Model/results/Epoch_29.png'>
   </tr>
 </table>
 
@@ -35,7 +35,7 @@ The initial model design is based on the papers [1] and [4] with addition to PyT
     <td> Training over time </td>
   </tr>
   <tr>
-    <td><img src = 'Model/results/animation_25epochs.gif'>
+    <td><img src = 'Model/results/generation_animation.gif'>
   </tr>
 </table>
 
